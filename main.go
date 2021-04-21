@@ -133,7 +133,8 @@ func main() {
 		resolvedHost = ipHost[0]
 	}
 
-	mapURL := fmt.Sprintf("https://wego.here.com/%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+	// mapURL := fmt.Sprintf("https://wego.here.com/%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+	mapURL := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%v,%v", whoisResult.Latitude, whoisResult.Longitude)
 	space := " "
 
 	var printOut string
