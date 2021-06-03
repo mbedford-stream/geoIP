@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/mbedford-stream/mbgofuncs/mbrandom"
 	// "reflect"
 )
 
@@ -41,10 +43,11 @@ type whoisInfo struct {
 func myIP() string {
 	getURL := "http://icanhazip.com/"
 	res, err := http.Get(getURL)
-	defer res.Body.Close()
 	if err != nil {
 		panic(err.Error())
 	}
+	defer res.Body.Close()
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		panic(err.Error())
@@ -94,10 +97,7 @@ func ipWhoIs(testIP string) whoisInfo {
 func checkIP(testIP string) bool {
 	ipConv := net.ParseIP(testIP)
 	// fmt.Println(ipConv)
-	if ipConv == nil {
-		return false
-	}
-	return true
+	return ipConv != nil
 }
 
 func main() {
@@ -105,10 +105,10 @@ func main() {
 	var inFlag bool
 	flag.BoolVar(&inFlag, "h", false, "Display help")
 	flag.Parse()
-	if inFlag == true {
+	if inFlag {
 		fmt.Println("\nRun the program with geoip <IP ADDRESS>")
 		fmt.Println("If run without an IP address, the program will determine your public IP and use that.")
-		fmt.Println("Have a nice day....\n")
+		fmt.Println("Have a nice day...")
 		return
 	}
 
@@ -117,34 +117,73 @@ func main() {
 		arg = myIP()
 	}
 
-	whoisResult := ipWhoIs(arg)
+	if !checkIP(arg) {
+		ipLookup, err := mbrandom.DNSResolver(arg)
+		for _, ip := range ipLookup {
+			fmt.Printf("%-10s%s\n", "", ip)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, k := range ipLookup {
+			whoisResult := ipWhoIs(k)
 
-	// fmt.Println(whoisResult)
+			if whoisResult.Error {
+				log.Println(whoisResult.Reason)
+			}
 
-	if whoisResult.Error {
-		log.Fatal(whoisResult.Reason)
-	}
+			ipHost, _ := net.LookupAddr(k)
+			var resolvedHost string
+			if len(ipHost) == 0 {
+				resolvedHost = ""
+			} else {
+				resolvedHost = ipHost[0]
+			}
 
-	ipHost, _ := net.LookupAddr(arg)
-	var resolvedHost string
-	if len(ipHost) == 0 {
-		resolvedHost = ""
+			// mapURL := fmt.Sprintf("https://wego.here.com/%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+			mapURL := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+			space := " "
+
+			var printOut string
+			printOut = fmt.Sprintf("\nIP:%-10s%s\n", space, whoisResult.IP)
+			printOut += fmt.Sprintf("Host:%8s%s\n", space, resolvedHost)
+			printOut += fmt.Sprintf("Location:%-4s%s / %s / %s\n", space, whoisResult.City, whoisResult.Region, whoisResult.CountryName)
+			printOut += fmt.Sprintf("Map:%9s%s\n", space, mapURL)
+			printOut += fmt.Sprintf("Org.:%8s%s\n", space, whoisResult.Org)
+			printOut += fmt.Sprintf("ASN:%9s%s\n\n", space, whoisResult.Asn)
+
+			fmt.Println(printOut)
+		}
 	} else {
-		resolvedHost = ipHost[0]
+
+		whoisResult := ipWhoIs(arg)
+
+		// fmt.Println(whoisResult)
+
+		if whoisResult.Error {
+			log.Println(whoisResult.Reason)
+		}
+
+		ipHost, _ := net.LookupAddr(arg)
+		var resolvedHost string
+		if len(ipHost) == 0 {
+			resolvedHost = ""
+		} else {
+			resolvedHost = ipHost[0]
+		}
+
+		// mapURL := fmt.Sprintf("https://wego.here.com/%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+		mapURL := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%v,%v", whoisResult.Latitude, whoisResult.Longitude)
+		space := " "
+
+		var printOut string
+		printOut = fmt.Sprintf("\nIP:%-10s%s\n", space, whoisResult.IP)
+		printOut += fmt.Sprintf("Host:%8s%s\n", space, resolvedHost)
+		printOut += fmt.Sprintf("Location:%-4s%s / %s / %s\n", space, whoisResult.City, whoisResult.Region, whoisResult.CountryName)
+		printOut += fmt.Sprintf("Map:%9s%s\n", space, mapURL)
+		printOut += fmt.Sprintf("Org.:%8s%s\n", space, whoisResult.Org)
+		printOut += fmt.Sprintf("ASN:%9s%s\n\n", space, whoisResult.Asn)
+
+		fmt.Println(printOut)
 	}
-
-	// mapURL := fmt.Sprintf("https://wego.here.com/%v,%v", whoisResult.Latitude, whoisResult.Longitude)
-	mapURL := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%v,%v", whoisResult.Latitude, whoisResult.Longitude)
-	space := " "
-
-	var printOut string
-	printOut = fmt.Sprintf("\nIP:%-10s%s\n", space, whoisResult.IP)
-	printOut += fmt.Sprintf("Host:%8s%s\n", space, resolvedHost)
-	printOut += fmt.Sprintf("Location:%-4s%s / %s / %s\n", space, whoisResult.City, whoisResult.Region, whoisResult.CountryName)
-	printOut += fmt.Sprintf("Map:%9s%s\n", space, mapURL)
-	printOut += fmt.Sprintf("Org.:%8s%s\n", space, whoisResult.Org)
-	printOut += fmt.Sprintf("ASN:%9s%s\n\n", space, whoisResult.Asn)
-
-	fmt.Println(printOut)
-
 }
