@@ -40,11 +40,18 @@ type whoisInfo struct {
 	UtcOffset          string  `json:"utc_offset"`
 }
 
-func myIP() string {
-	getURL := "http://icanhazip.com/"
+func myIP(ipV string) string {
+	var getURL string
+	if ipV == "4" {
+		getURL = "http://ipv4.icanhazip.com"
+	} else if ipV == "6" {
+		getURL = "http://ipv6.icanhazip.com"
+	} else {
+		getURL = "http://icanhazip.com/"
+	}
 	res, err := http.Get(getURL)
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("Ran into problems retrieving current IP:\n\t %s", err.Error())
 	}
 	defer res.Body.Close()
 
@@ -103,7 +110,9 @@ func checkIP(testIP string) bool {
 func main() {
 
 	var inFlag bool
+	var inVer string
 	flag.BoolVar(&inFlag, "h", false, "Display help")
+	flag.StringVar(&inVer, "v", "4", "Use either 4 or 6 to define IP to retrieve")
 	flag.Parse()
 	if inFlag {
 		fmt.Println("\nRun the program with geoip <IP ADDRESS>")
@@ -114,7 +123,7 @@ func main() {
 
 	arg := flag.Arg(0)
 	if arg == "" {
-		arg = myIP()
+		arg = myIP(inVer)
 	}
 
 	if !checkIP(arg) {
